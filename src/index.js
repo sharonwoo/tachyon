@@ -8,7 +8,7 @@ const STATIC_DATA = { characterNames, overrides, skills, skillCatalog };
 
 const MAX_FILES = 300; // generous headroom over the ~100-file expected case
 const MAX_TOTAL_BYTES = 200 * 1024 * 1024; // 200MB total
-const MAX_FILE_BYTES = 2 * 1024 * 1024; // 2MB per file - real replays observed at ~350-410KB, ~5x headroom
+const MAX_FILE_BYTES = 1024 * 1024; // 1MB per file - real replays observed at ~350-410KB, ~2.5x headroom
 
 function errorPage(message, status) {
   const html = `<!doctype html>
