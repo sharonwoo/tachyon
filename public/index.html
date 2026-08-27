@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Team Trial Leaderboard Builder</title>
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    .tt-upload-wrap { max-width: 40rem; margin: 4rem auto; padding: 0 1rem; }
+    .tt-dropzone {
+      border: 2px dashed var(--border-color, #999);
+      border-radius: 12px;
+      padding: 3rem 1.5rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color .15s, background .15s;
+    }
+    .tt-dropzone.dragover { border-color: #4a9; background: rgba(68, 170, 153, .08); }
+    .tt-dropzone input { display: none; }
+    .tt-file-count { margin-top: 1rem; font-size: .9rem; opacity: .8; }
+    .tt-build-btn {
+      margin-top: 1.5rem; padding: .6rem 1.4rem; font-size: 1rem;
+      border-radius: 8px; border: none; background: #4a9; color: #fff;
+      cursor: pointer;
+    }
+    .tt-build-btn:disabled { opacity: .5; cursor: not-allowed; }
+    .tt-status { margin-top: 1rem; font-size: .9rem; }
+    .tt-status.error { color: #c33; }
+  </style>
+</head>
+<body>
+  <div class="tt-upload-wrap">
+    <h1>Team Trial Leaderboard Builder</h1>
+    <p>
+      Drop your Team Stadium replay JSON files below (the ones captured by
+      <code>umadump</code>'s team_stadium_replay extractor). Nothing is
+      stored - files are processed in memory and the leaderboard page is
+      generated on the fly.
+    </p>
+    <div class="tt-dropzone" id="dropzone">
+      <p>Drag and drop replay .json files here, or click to choose</p>
+      <input type="file" id="fileInput" multiple accept="application/json,.json">
+    </div>
+    <div class="tt-file-count" id="fileCount"></div>
+    <button class="tt-build-btn" id="buildBtn" disabled>Build leaderboard</button>
+    <div class="tt-status" id="status"></div>
+  </div>
+
+  <script>
+    const dropzone = document.getElementById("dropzone");
+    const fileInput = document.getElementById("fileInput");
+    const fileCount = document.getElementById("fileCount");
+    const buildBtn = document.getElementById("buildBtn");
+    const status = document.getElementById("status");
+    let selectedFiles = [];
+
+    function setFiles(fileList) {
+      selectedFiles = Array.from(fileList).filter((f) => f.name.endsWith(".json"));
+      fileCount.textContent = selectedFiles.length
+        ? `${selectedFiles.length} file(s) selected`
+        : "";
+      buildBtn.disabled = selectedFiles.length === 0;
+    }
+
+    dropzone.addEventListener("click", () => fileInput.click());
+    fileInput.addEventListener("change", () => setFiles(fileInput.files));
+
+    dropzone.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      dropzone.classList.add("dragover");
+    });
+    dropzone.addEventListener("dragleave", () => dropzone.classList.remove("dragover"));
+    dropzone.addEventListener("drop", (e) => {
+      e.preventDefault();
+      dropzone.classList.remove("dragover");
+      setFiles(e.dataTransfer.files);
+    });
+
+    buildBtn.addEventListener("click", async () => {
+      buildBtn.disabled = true;
+      status.className = "tt-status";
+      status.textContent = `Building from ${selectedFiles.length} file(s)...`;
+
+      const formData = new FormData();
+      const meta = selectedFiles.map((f) => ({ name: f.name, lastModified: f.lastModified }));
+      for (const f of selectedFiles) formData.append("files", f, f.name);
+      formData.append("meta", JSON.stringify(meta));
+
+      try {
+        const resp = await fetch("/build", { method: "POST", body: formData });
+        const html = await resp.text();
+        if (!resp.ok) {
+          status.className = "tt-status error";
+          status.textContent = "Build failed - see below.";
+          document.open();
+          document.write(html);
+          document.close();
+          return;
+        }
+        document.open();
+        document.write(html);
+        document.close();
+      } catch (err) {
+        status.className = "tt-status error";
+        status.textContent = "Request failed: " + err.message;
+        buildBtn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

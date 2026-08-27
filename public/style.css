@@ -1,0 +1,1035 @@
+:root {
+  --bg: #0d1117;
+  --bg-card: #161b22;
+  --border: #30363d;
+  --text: #c9d1d9;
+  --text-muted: #8b949e;
+
+  --level-0: #161b22;
+  --level-1: #0e4429;
+  --level-2: #006d32;
+  --level-3: #26a641;
+  --level-4: #39d353;
+
+  --rarity-r: #6e7681;
+  --rarity-sr: #a371f7;
+  --rarity-ssr: #d4a72c;
+
+  --type-speed: #58a6ff;
+  --type-stamina: #f78166;
+  --type-power: #f0883e;
+  --type-guts: #ff7b9c;
+  --type-wisdom: #56d364;
+  --type-friends: #d2a8ff;
+  --type-group: #79c0ff;
+
+  --factor-stat: #58a6ff;
+  --factor-aptitude: #56d364;
+  --factor-race: #d4a72c;
+  --factor-unique: #f78166;
+  --factor-skill: #a371f7;
+  --factor-scenario: #79c0ff;
+  --factor-other: #8b949e;
+
+  --status-safe_transfer: #f85149;
+  --status-review: #d29922;
+  --status-likely_keep: #58a6ff;
+  --status-keep: #3fb950;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 24px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  font-size: 14px;
+}
+
+.page-header {
+  max-width: 960px;
+  margin: 0 auto 24px;
+}
+
+.page-header h1 {
+  margin: 0 0 12px;
+  font-size: 22px;
+}
+
+.summary {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.summary .stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.summary .stat strong {
+  font-size: 18px;
+}
+
+.summary .stat span {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+/* ---------- Team overview boxplot ---------- */
+
+.team-overview-section {
+  max-width: 960px;
+  margin: 0 auto 24px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 14px 16px;
+}
+
+.section-heading {
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.tt-overview-empty {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.tt-overview-key {
+  margin: 0 0 8px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.tt-overview-key .tt-key-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background: var(--factor-stat);
+  opacity: 0.55;
+  border: 1px solid var(--factor-stat);
+  vertical-align: -1px;
+  margin-right: 3px;
+}
+
+.tt-boxplot {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
+}
+
+.tt-boxplot-row {
+  cursor: default;
+}
+
+.tt-boxplot-hit {
+  fill: transparent;
+  pointer-events: all;
+}
+
+.tt-boxplot-row:hover .tt-box {
+  fill-opacity: 0.55;
+}
+
+.tt-boxplot-row:hover .tt-boxplot-label {
+  fill: #ffffff;
+}
+
+.tt-boxplot-label {
+  fill: var(--text);
+  font-size: 12px;
+}
+
+.tt-boxplot-sublabel {
+  fill: var(--text-muted);
+  font-size: 10px;
+}
+
+.tt-boxplot-axis text {
+  fill: var(--text-muted);
+  font-size: 10px;
+}
+
+.tt-boxplot-axis line,
+.tt-boxplot-gridline {
+  stroke: var(--border);
+}
+
+.tt-box {
+  fill: var(--factor-stat);
+  fill-opacity: 0.35;
+  stroke: var(--factor-stat);
+  stroke-width: 1.5;
+}
+
+.tt-whisker {
+  stroke: var(--text-muted);
+  stroke-width: 1.5;
+}
+
+.tt-median {
+  stroke: var(--text);
+  stroke-width: 2;
+}
+
+.tt-mean {
+  fill: var(--factor-race);
+  stroke: var(--bg-card);
+  stroke-width: 1;
+}
+
+.tt-team-avg-line {
+  stroke: var(--text-muted);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+.tt-team-avg-label {
+  fill: var(--text-muted);
+  font-size: 10px;
+}
+
+.tt-overview-tooltip {
+  position: absolute;
+  z-index: 10;
+  pointer-events: none;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+
+.tt-overview-tooltip.visible {
+  opacity: 1;
+}
+
+.tt-overview-tooltip strong {
+  color: var(--text);
+}
+
+/* ---------- Heatmap ---------- */
+
+.heatmap-section {
+  max-width: 960px;
+  margin: 0 auto 32px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 16px;
+  overflow-x: auto;
+}
+
+.heatmap-months {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 14px;
+  margin-bottom: 4px;
+  margin-left: 18px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.heatmap {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 11px;
+  grid-template-rows: repeat(7, 11px);
+  gap: 3px;
+  margin-left: 18px;
+}
+
+.day {
+  width: 11px;
+  height: 11px;
+  border-radius: 2px;
+  background: var(--level-0);
+  outline: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.day.has-data {
+  cursor: pointer;
+}
+
+.day.level-1 { background: var(--level-1); }
+.day.level-2 { background: var(--level-2); }
+.day.level-3 { background: var(--level-3); }
+.day.level-4 { background: var(--level-4); }
+
+.heatmap-legend {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.heatmap-legend .day {
+  cursor: default;
+}
+
+/* ---------- Timeline ---------- */
+
+.timeline-section {
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+.day-group {
+  margin-bottom: 28px;
+}
+
+.day-heading {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0 0 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+  font-size: 16px;
+  scroll-margin-top: 16px;
+}
+
+.day-heading .day-count {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: normal;
+}
+
+.run-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+}
+
+.run-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.run-time {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+}
+
+.run-uma {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background: #1f6feb33;
+  border: 1px solid #1f6feb66;
+  color: #79c0ff;
+  font-size: 11px;
+}
+
+.run-stats {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+  font-size: 12px;
+}
+
+.run-stats .stat-label {
+  color: var(--text-muted);
+  margin-right: 4px;
+}
+
+.run-meta {
+  color: var(--text-muted);
+  font-size: 12px;
+  margin-bottom: 10px;
+}
+
+.run-deck {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.card-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: #21262d;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--rarity-r);
+  font-size: 11px;
+}
+
+.card-chip.rarity-SR {
+  border-left-color: var(--rarity-sr);
+}
+
+.card-chip.rarity-SSR {
+  border-left-color: var(--rarity-ssr);
+}
+
+.card-chip .type-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.type-Speed { background: var(--type-speed); }
+.type-Stamina { background: var(--type-stamina); }
+.type-Power { background: var(--type-power); }
+.type-Guts { background: var(--type-guts); }
+.type-Wisdom { background: var(--type-wisdom); }
+.type-Friends { background: var(--type-friends); }
+.type-Group { background: var(--type-group); }
+
+.card-chip .lb {
+  color: var(--text-muted);
+}
+
+/* ---------- Filters ---------- */
+
+.filter-section {
+  max-width: 960px;
+  margin: 0 auto 24px;
+}
+
+.filters {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px 16px;
+}
+
+.filter-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.filter-item.filter-checkbox {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  color: var(--text);
+  cursor: pointer;
+  padding-bottom: 2px;
+}
+
+.filter-select,
+.filter-input {
+  background: #0d1117;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-size: 12px;
+  padding: 4px 8px;
+  min-width: 140px;
+}
+
+.filter-input[type="number"] {
+  min-width: 90px;
+}
+
+.filter-reset {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 4px 12px;
+  align-self: flex-end;
+}
+
+.filter-reset:hover {
+  border-color: var(--text-muted);
+  color: var(--text);
+}
+
+.timeline-count {
+  max-width: 960px;
+  margin: 0 auto 12px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.timeline-empty {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+/* ---------- Locked badge ---------- */
+
+.badge-locked {
+  background: #3d2b0033;
+  border-color: #d4a72c66;
+  color: var(--rarity-ssr);
+}
+
+/* ---------- Factors ---------- */
+
+.section-label {
+  display: block;
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 5px;
+}
+
+.run-factors {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.factor-chips {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.factor-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 11px;
+  background: #21262d;
+  border: 1px solid var(--border);
+  border-left-width: 3px;
+}
+
+.factor-stat    { border-left-color: var(--factor-stat); }
+.factor-aptitude { border-left-color: var(--factor-aptitude); }
+.factor-race    { border-left-color: var(--factor-race); }
+.factor-unique  { border-left-color: var(--factor-unique); }
+.factor-skill   { border-left-color: var(--factor-skill); }
+.factor-scenario { border-left-color: var(--factor-scenario); }
+.factor-other,
+.factor-unknown { border-left-color: var(--factor-other); }
+
+/* ---------- Skills ---------- */
+
+.run-skills {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.skill-chips {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.skill-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 11px;
+  background: #21262d;
+  border: 1px solid var(--border);
+  border-left-width: 3px;
+  border-left-color: var(--border);
+}
+
+.skill-chip.skill-unique {
+  border-left-color: var(--rarity-ssr);
+}
+
+.skill-chip .lb {
+  color: var(--text-muted);
+}
+
+.factor-stars {
+  color: var(--rarity-ssr);
+  font-size: 10px;
+}
+
+/* ---------- Sparks / Lineage ---------- */
+
+.run-sparks {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.spark-tree {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.spark-branch {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 160px;
+}
+
+.spark-parent {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: #21262d;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 5px 8px;
+  cursor: default;
+}
+
+.spark-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.spark-name {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.spark-grandparents {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  padding-left: 4px;
+}
+
+.spark-gp {
+  font-size: 11px;
+  color: var(--text-muted);
+  background: #0d1117;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 2px 6px;
+  cursor: default;
+}
+
+/* ── Trends page ─────────────────────────────────────────────────── */
+
+.page-header-top {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.nav-link {
+  font-size: 13px;
+  color: var(--text-muted);
+  text-decoration: none;
+}
+
+.nav-link:hover {
+  color: var(--text);
+}
+
+.tab-nav {
+  max-width: 960px;
+  margin: 0 auto 20px;
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0;
+}
+
+.tab-btn {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 13px;
+  padding: 8px 14px;
+  margin-bottom: -1px;
+}
+
+.tab-btn:hover {
+  color: var(--text);
+}
+
+.tab-btn.active {
+  border-bottom-color: #58a6ff;
+  color: var(--text);
+}
+
+.trends-main {
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+.tab-panel {
+  padding-bottom: 40px;
+}
+
+.trend-filters {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.chart-wrap {
+  overflow-x: auto;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 16px;
+}
+
+.panel-hint {
+  color: var(--text-muted);
+  font-size: 12px;
+  margin: 0 0 10px;
+}
+
+/* SVG chart elements */
+
+.trend-svg {
+  display: block;
+}
+
+.grid-h {
+  stroke: var(--border);
+  stroke-width: 1;
+}
+
+.grid-v {
+  stroke: var(--border);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+.axis-lbl {
+  fill: var(--text-muted);
+  font-size: 11px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+}
+
+.val-lbl {
+  fill: var(--text);
+}
+
+.chart-dot {
+  cursor: pointer;
+  transition: r 0.1s;
+}
+
+.chart-dot:hover {
+  r: 6;
+}
+
+/* Horizontal bar chart */
+
+.hbar-row {
+  cursor: pointer;
+}
+
+.hbar-row:hover .axis-lbl {
+  fill: var(--text);
+}
+
+.hbar-selected rect:not(.hbar-hit) {
+  filter: brightness(1.3);
+}
+
+/* Card detail panel */
+
+.card-detail {
+  margin-top: 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 16px;
+}
+
+.card-detail:empty {
+  display: none;
+}
+
+.detail-heading {
+  margin: 0 0 4px;
+  font-size: 15px;
+}
+
+.detail-meta {
+  margin: 0 0 12px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+/* Deck table */
+
+.deck-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.deck-table th {
+  border-bottom: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: normal;
+  padding: 6px 8px;
+  text-align: left;
+}
+
+.th-deck { width: 100%; }
+
+.deck-table td {
+  border-bottom: 1px solid #21262d;
+  padding: 8px;
+  vertical-align: middle;
+}
+
+.deck-table tr:last-child td {
+  border-bottom: none;
+}
+
+.col-num {
+  text-align: right;
+  white-space: nowrap;
+  color: var(--text);
+}
+
+.tt-top1 {
+  color: var(--status-keep);
+  font-weight: 600;
+}
+
+.tt-top3 {
+  color: var(--factor-race);
+}
+
+.tt-distance-table-wrap {
+  overflow-x: auto;
+  margin: 10px 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.tt-distance-table {
+  margin: 0;
+}
+
+.tt-current-distance-row td {
+  background: rgba(63, 185, 80, 0.08);
+}
+
+.col-spark {
+  width: 108px;
+  padding-left: 12px;
+}
+
+.deck-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.dchip {
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 3px;
+  background: #21262d;
+  border: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.type-chip-Speed   { border-left: 3px solid var(--type-speed); }
+.type-chip-Stamina { border-left: 3px solid var(--type-stamina); }
+.type-chip-Power   { border-left: 3px solid var(--type-power); }
+.type-chip-Guts    { border-left: 3px solid var(--type-guts); }
+.type-chip-Wisdom  { border-left: 3px solid var(--type-wisdom); }
+.type-chip-Friends { border-left: 3px solid var(--type-friends); }
+.type-chip-Group   { border-left: 3px solid var(--type-group); }
+.type-chip-none    { border-left: 3px solid var(--border); }
+
+.sparkline-svg {
+  display: block;
+}
+
+.show-all-btn {
+  margin-top: 12px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 6px 12px;
+}
+
+.show-all-btn:hover {
+  border-color: var(--text-muted);
+  color: var(--text);
+}
+
+/* ---------- Cull Helper ---------- */
+
+.status-badge {
+  border-radius: 12px;
+  font-weight: 600;
+}
+
+.status-badge.status-safe_transfer {
+  background: #f8514933;
+  border-color: #f8514966;
+  color: var(--status-safe_transfer);
+}
+
+.status-badge.status-review {
+  background: #d2992233;
+  border-color: #d2992266;
+  color: var(--status-review);
+}
+
+.status-badge.status-likely_keep {
+  background: #1f6feb33;
+  border-color: #1f6feb66;
+  color: var(--status-likely_keep);
+}
+
+.status-badge.status-keep {
+  background: #3fb95033;
+  border-color: #3fb95066;
+  color: var(--status-keep);
+}
+
+.cull-card {
+  border-left-width: 3px;
+  border-left-style: solid;
+}
+
+.cull-card.status-safe_transfer { border-left-color: var(--status-safe_transfer); }
+.cull-card.status-review        { border-left-color: var(--status-review); }
+.cull-card.status-likely_keep   { border-left-color: var(--status-likely_keep); }
+.cull-card.status-keep          { border-left-color: var(--status-keep); }
+
+.run-card.current-team {
+  border-left-width: 3px;
+  border-left-style: solid;
+  border-left-color: var(--status-keep);
+}
+
+/* prefixed tt- to avoid colliding with app.js's own .skill-chip(s), which
+   this file already defines above with different base styling */
+.tt-skill-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.tt-skill-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 11px;
+  background: #21262d;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--factor-skill);
+}
+
+.tt-skill-chip.tt-skill-chip-green {
+  border-left-color: var(--level-3);
+}
+
+.tt-skill-chip .rate {
+  color: var(--text-muted);
+}
+
+.cull-reason {
+  color: var(--text-muted);
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+.cull-replacement {
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+
+.cull-context-line {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
+
+.cull-detail {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.cull-detail summary {
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text-muted);
+  user-select: none;
+}
+
+.cull-detail summary:hover {
+  color: var(--text);
+}
+
+.cull-detail-body {
+  margin-top: 10px;
+}
+
+.cull-subsection {
+  margin-top: 10px;
+}
+
+.cull-profile-list {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.cull-profile-list li {
+  margin-bottom: 2px;
+}
