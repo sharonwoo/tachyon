@@ -147,7 +147,11 @@ function deserialize(buf) {
   };
 }
 
-const MAX_DECOMPRESSED_BYTES = 1024 * 1024; // 1MB - real scenario blobs measured at 18-46KB, ~20x headroom
+const MAX_DECOMPRESSED_BYTES = 128 * 1024; // 128KB - real scenario blobs (across all 200 rounds sampled)
+// measured at 15.9-49.8KB decompressed, ~2.6x headroom over the largest one
+// seen - covers longer future races too (distances have crept from ~3400m
+// toward ~3600m; a proportional frame-count increase is well within this
+// margin) without leaving room for a meaningful decompression bomb.
 
 async function base64GzipDecompress(b64) {
   const binaryStr = atob(b64);
