@@ -147,7 +147,7 @@ function deserialize(buf) {
   };
 }
 
-const MAX_DECOMPRESSED_BYTES = 20 * 1024 * 1024; // real scenario blobs are far smaller than this
+const MAX_DECOMPRESSED_BYTES = 1024 * 1024; // 1MB - real scenario blobs measured at 18-46KB, ~20x headroom
 
 async function base64GzipDecompress(b64) {
   const binaryStr = atob(b64);
