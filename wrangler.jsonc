@@ -33,10 +33,16 @@
 	 * Static Assets
 	 * https://developers.cloudflare.com/workers/static-assets/binding/
 	 */
-	"assets": { "directory": "./public/" }
+	"assets": { "directory": "./public/" },
 	/**
 	 * Service Bindings (communicate between multiple Workers)
 	 * https://developers.cloudflare.com/workers/wrangler/configuration/#service-bindings
 	 */
 	// "services": [  {   "binding": "MY_SERVICE",   "service": "my-service"  } ]
+	/**
+	 * Custom Domains
+	 * https://developers.cloudflare.com/workers/configuration/routing/custom-domains/
+	 * Requires satki.org to already be an active zone in this Cloudflare account.
+	 */
+	"routes": [{ "pattern": "tachyon.satki.org", "custom_domain": true }]
 }
