@@ -85,6 +85,7 @@ async function handleBuild(request) {
     <div class="page-header-top">
       <h1>Team Trial Leaderboard</h1>
       <a href="/" class="nav-link">&larr; Build another</a>
+      <a href="https://github.com/sharonwoo/tachyon" class="nav-link">Source on GitHub</a>
     </div>
     <div id="summary" class="summary"></div>
   </header>
