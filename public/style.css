@@ -4,6 +4,8 @@
   --border: #30363d;
   --text: #c9d1d9;
   --text-muted: #8b949e;
+  --pink: #f778ba;
+  --pink-hover: #ffa1d1;
 
   --level-0: #161b22;
   --level-1: #0e4429;
@@ -661,6 +663,33 @@ body {
 
 .nav-link:hover {
   color: var(--text);
+}
+
+.tt-gh-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--pink);
+  text-decoration: none;
+}
+
+.tt-gh-link:hover {
+  color: var(--pink-hover);
+}
+
+.tt-gh-link svg {
+  fill: currentColor;
+}
+
+.tt-inline-link {
+  color: var(--pink);
+  text-decoration: none;
+}
+
+.tt-inline-link:hover {
+  color: var(--pink-hover);
+  text-decoration: underline;
 }
 
 .tab-nav {
