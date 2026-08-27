@@ -7,7 +7,8 @@ import skillCatalog from "./data/skill_condition_catalog.json";
 const STATIC_DATA = { characterNames, overrides, skills, skillCatalog };
 
 const MAX_FILES = 300; // generous headroom over the ~100-file expected case
-const MAX_TOTAL_BYTES = 200 * 1024 * 1024; // 200MB
+const MAX_TOTAL_BYTES = 200 * 1024 * 1024; // 200MB total
+const MAX_FILE_BYTES = 2 * 1024 * 1024; // 2MB per file - real replays observed at ~350-410KB, ~5x headroom
 
 function errorPage(message, status) {
   const html = `<!doctype html>
@@ -45,6 +46,9 @@ async function handleBuild(request) {
   const replays = [];
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
+    if (file.size > MAX_FILE_BYTES) {
+      return errorPage(`"${meta[i]?.name ?? file.name}" is ${(file.size / 1024 / 1024).toFixed(1)}MB, over the ${MAX_FILE_BYTES / 1024 / 1024}MB per-file limit.`, 400);
+    }
     totalBytes += file.size;
     if (totalBytes > MAX_TOTAL_BYTES) return errorPage("Uploaded files are too large in total.", 400);
 
@@ -101,7 +105,11 @@ async function handleBuild(request) {
     <div id="team-trial-count" class="timeline-count"></div>
     <div id="team-trial-list"></div>
   </section>
-  <script>const TEAM_TRIAL_DATA = ${JSON.stringify(data)};</script>
+  <!-- JSON.stringify doesn't escape "/", so a replay whose trainer_name
+       contains a literal "</script>" would otherwise close this tag early
+       and inject arbitrary markup - escaping "<" to \u003c keeps it a valid
+       JS string while removing anything the HTML parser could act on. -->
+  <script>const TEAM_TRIAL_DATA = ${JSON.stringify(data).replace(/</g, "\\u003c")};</script>
   <script src="/team_trial.js"></script>
 </body>
 </html>`;

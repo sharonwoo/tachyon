@@ -147,12 +147,38 @@ function deserialize(buf) {
   };
 }
 
+const MAX_DECOMPRESSED_BYTES = 20 * 1024 * 1024; // real scenario blobs are far smaller than this
+
 async function base64GzipDecompress(b64) {
   const binaryStr = atob(b64);
   const bytes = new Uint8Array(binaryStr.length);
   for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
   const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
-  return await new Response(stream).arrayBuffer();
+
+  // Read incrementally and abort as soon as the cap is exceeded, rather than
+  // materializing the whole decompressed output first - a small gzip payload
+  // can expand enormously (decompression bomb), and checking only after
+  // buffering it all defeats the point of capping it.
+  const reader = stream.getReader();
+  const chunks = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > MAX_DECOMPRESSED_BYTES) {
+      reader.cancel();
+      throw new Error(`race_scenario decompressed past ${MAX_DECOMPRESSED_BYTES / 1024 / 1024}MB - refusing to continue`);
+    }
+    chunks.push(value);
+  }
+  const out = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    out.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return out.buffer;
 }
 
 /** Decode a raw `race_scenario` field into the deserialized race data. */
