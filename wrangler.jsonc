@@ -4,7 +4,7 @@
  */
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
-	"name": "uma-team-trial-worker",
+	"name": "tachyon",
 	"main": "src/index.js",
 	"compatibility_date": "2026-08-25",
 	"observability": {

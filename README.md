@@ -1,4 +1,4 @@
-# uma-team-trial-worker
+# tachyon
 
 A Cloudflare Worker that turns a batch of Uma Musume Team Stadium replay
 JSON files (captured by [umadump](https://github.com/Werseter/umadump))
