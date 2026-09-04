@@ -216,14 +216,28 @@ export function distanceCategory(meters) {
  * Return, per horse_index (0-based, == frame_order - 1):
  *   { activations: [[frameTime, skillId, effect], ...],  // white skills
  *     greenActivations: [skillId, ...],                  // green/aptitude skills
- *     defeat: DefeatType int }
+ *     defeat: DefeatType int,
+ *     lastSpurtStartDistance: number }  // meters; -1 if never spurted
  * plus a "_distance_m" key with the race's actual course distance.
+ *
+ * lastSpurtStartDistance is -1 exactly when defeat === 7 (LastSpurtFalse) -
+ * i.e. the horse never entered last-spurt phase at all - and defeat === 8
+ * (LastSpurtTargetSpeedDec) flags a spurt that started but couldn't hold
+ * target speed to the finish (see _race_scenario.py's docstring on the
+ * Python side for how this was confirmed against real replay data). So
+ * per-horse spurt outcome derives as: didSheSpurt = lastSpurtStartDistance
+ * !== -1; fullSpurt = didSheSpurt && defeat !== 8.
  */
 export async function horseActivity(raceScenarioB64) {
   const scenario = await parse(raceScenarioB64);
   const result = {};
   for (let i = 0; i < scenario.horseNum; i++) {
-    result[i] = { activations: [], greenActivations: [], defeat: scenario.horseResult[i].defeat };
+    result[i] = {
+      activations: [],
+      greenActivations: [],
+      defeat: scenario.horseResult[i].defeat,
+      lastSpurtStartDistance: scenario.horseResult[i].lastSpurtStartDistance,
+    };
   }
   for (const e of scenario.event) {
     if (e.type !== 3) continue; // SKILL

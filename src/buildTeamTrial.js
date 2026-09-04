@@ -59,6 +59,13 @@ function raceStats(matches) {
   const avgScore = totalScore / races;
   const scoresSorted = matches.map((m) => m.score).sort((a, b) => a - b);
   const scoreStddev = races > 1 ? pstdev(scoresSorted) : 0;
+  // A handful of races have undecodable race_scenario blobs, which leaves
+  // spurted/full_spurt as null on those matches - excluded from the
+  // denominator here rather than counted as a non-spurt.
+  const spurtKnown = matches.filter((m) => m.spurted != null);
+  const fullSpurtRate = spurtKnown.length
+    ? spurtKnown.filter((m) => m.full_spurt).length / spurtKnown.length
+    : null;
   return {
     races,
     wins,
@@ -78,6 +85,7 @@ function raceStats(matches) {
     score_max: scoresSorted[scoresSorted.length - 1],
     avg_finish_order: matches.reduce((a, m) => a + m.finish_order, 0) / races,
     best_finish_order: Math.min(...matches.map((m) => m.finish_order)),
+    full_spurt_rate: fullSpurtRate,
   };
 }
 
@@ -218,10 +226,16 @@ export async function buildTeamTrialData(replays, staticData) {
           stat.totalActivations++;
           stat.isGreen = true;
         }
+        let spurted = null;
+        let fullSpurt = null;
         if (horse) {
           if (!perUmaDefeats.has(tid)) perUmaDefeats.set(tid, new Map());
           const defeatMap = perUmaDefeats.get(tid);
           defeatMap.set(horse.defeat, (defeatMap.get(horse.defeat) || 0) + 1);
+          // See raceScenario.js's horseActivity docstring for how these two
+          // derive from lastSpurtStartDistance and defeat.
+          spurted = horse.lastSpurtStartDistance !== -1;
+          fullSpurt = spurted && horse.defeat !== 8; // LastSpurtTargetSpeedDec
         }
 
         const info = charaInfo[tid];
@@ -247,6 +261,8 @@ export async function buildTeamTrialData(replays, staticData) {
           score,
           win: won,
           team_total_score: roundResult.team_total_score,
+          spurted,
+          full_spurt: fullSpurt,
         });
       }
     }

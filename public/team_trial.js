@@ -83,6 +83,8 @@
       sorted.sort((a, b) => s(b).top1_rate - s(a).top1_rate || s(b).avg_score - s(a).avg_score);
     } else if (state.sort === 'top3_rate') {
       sorted.sort((a, b) => s(b).top3_rate - s(a).top3_rate || s(b).avg_score - s(a).avg_score);
+    } else if (state.sort === 'full_spurt_rate') {
+      sorted.sort((a, b) => (s(b).full_spurt_rate ?? -1) - (s(a).full_spurt_rate ?? -1) || s(b).avg_score - s(a).avg_score);
     } else if (state.sort === 'finish_order') {
       sorted.sort((a, b) => s(a).avg_finish_order - s(b).avg_finish_order);
     } else if (state.sort === 'races') {
@@ -287,6 +289,7 @@
       ['top1_rate', 'Top-1 finish rate'],
       ['top3_rate', 'Top-3 finish rate'],
       ['win_rate', 'Team round win rate'],
+      ['full_spurt_rate', 'Full spurt rate'],
       ['finish_order', 'Avg finish position (best first)'],
       ['races', 'Most races run'],
     ], v => {
@@ -381,6 +384,7 @@
       <span class="badge status-badge status-keep" title="Individual finish_order === 1 out of the 12-horse field, ${escapeHtml(statsLabel)}">${pct(s.top1_rate)} top-1</span>
       <span class="badge" title="Individual finish_order <= 3 out of the 12-horse field, ${escapeHtml(statsLabel)}">${pct(s.top3_rate)} top-3</span>
       <span class="badge" title="Team's round win/loss (win_type) - shared by every teammate who raced that round, not this uma's own placement">${pct(s.win_rate)} team win rate</span>
+      ${s.full_spurt_rate != null ? `<span class="badge" title="Share of races where she held the last spurt's target speed all the way to the finish, rather than throttling back from low stamina, ${escapeHtml(statsLabel)}">${pct(s.full_spurt_rate)} full spurt</span>` : ''}
       ${uma.switches_distance ? '<span class="badge status-badge status-safe_transfer" title="This uma has raced at more than one distance category - see the per-distance breakdown below">Switches distance</span>' : ''}
       ${renderCollapseBadge(uma)}
     `;
@@ -479,6 +483,18 @@
     return wrap;
   }
 
+  function renderSpurtBadge(m) {
+    if (m.spurted == null) {
+      return '<span class="badge" title="This race\'s replay data didn\'t decode">?</span>';
+    }
+    if (!m.spurted) {
+      return '<span class="badge status-badge status-safe_transfer" title="Never entered last-spurt phase">No spurt</span>';
+    }
+    return m.full_spurt
+      ? '<span class="badge status-badge status-keep" title="Held the last spurt\'s target speed all the way to the finish">Full spurt</span>'
+      : '<span class="badge status-badge status-safe_transfer" title="Spurted, but had to throttle back from low stamina before the finish">Partial spurt</span>';
+  }
+
   function renderMatchLog(uma) {
     const details = document.createElement('details');
     details.className = 'cull-detail';
@@ -501,6 +517,7 @@
         <td class="col-num">${formatNumber(m.score)}</td>
         <td class="col-num">${formatNumber(m.team_total_score)}</td>
         <td>${m.win ? '<span class="badge status-badge status-keep">Win</span>' : '<span class="badge status-badge status-safe_transfer">Loss</span>'}</td>
+        <td>${renderSpurtBadge(m)}</td>
       </tr>
     `).join('');
     table.innerHTML = `
@@ -508,7 +525,7 @@
         <th>date</th><th>opponent</th><th class="col-num">round</th>
         <th class="col-num">distance</th>
         <th class="col-num">finish (of 12)</th><th class="col-num">score</th>
-        <th class="col-num">team total</th><th>team result</th>
+        <th class="col-num">team total</th><th>team result</th><th>spurt</th>
       </tr></thead>
       <tbody>${rows}</tbody>
     `;
