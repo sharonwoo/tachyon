@@ -42,9 +42,8 @@
     <p>
       Drop your Team Stadium replay JSON files below (the ones captured by
       <a href="https://github.com/Werseter/umadump" class="tt-inline-link"><code>umadump</code></a>'s
-      team_stadium_replay extractor). Nothing is stored - files are processed
-      in memory and the leaderboard page is generated on the fly. Up to 300
-      files at once.
+      team_stadium_replay extractor). Everything runs in your browser - your
+      files are never uploaded or stored anywhere.
     </p>
     <div class="tt-dropzone" id="dropzone">
       <p>Drag and drop replay .json files here, or click to choose</p>
@@ -66,7 +65,9 @@
     <img src="/example-leaderboard.jpg" alt="Example Team Trial Leaderboard output - score distribution chart, filters, and per-uma stat cards" loading="lazy">
   </div>
 
-  <script>
+  <script type="module">
+    import { buildTeamTrialData } from "/js/buildTeamTrial.js";
+
     const dropzone = document.getElementById("dropzone");
     const fileInput = document.getElementById("fileInput");
     const fileCount = document.getElementById("fileCount");
@@ -80,6 +81,86 @@
         ? `${selectedFiles.length} file(s) selected`
         : "";
       buildBtn.disabled = selectedFiles.length === 0;
+    }
+
+    function fail(message) {
+      status.className = "tt-status error";
+      status.textContent = message;
+      buildBtn.disabled = false;
+    }
+
+    // Let the browser repaint (progress text) between chunks of work.
+    const nextFrame = () => new Promise((resolve) => setTimeout(resolve));
+
+    async function loadStaticData() {
+      const names = ["character_names", "overrides", "skills", "skill_condition_catalog", "team_stadium_raw_score"];
+      const [characterNames, overrides, skills, skillCatalog, rawScoreTable] = await Promise.all(
+        names.map(async (n) => {
+          const resp = await fetch(`/data/${n}.json`);
+          if (!resp.ok) throw new Error(`couldn't load ${n}.json (${resp.status})`);
+          return resp.json();
+        })
+      );
+      return { characterNames, overrides, skills, skillCatalog, rawScoreTable };
+    }
+
+    // Swap the upload page for the leaderboard. TEAM_TRIAL_DATA is set as a
+    // global (what team_trial.js reads) rather than embedded in HTML, so
+    // nothing in a replay is ever parsed as markup here; team_trial.js
+    // escapes every string it renders.
+    function showLeaderboard(result) {
+      const { warnings, ...data } = result;
+      window.TEAM_TRIAL_DATA = data;
+      document.body.innerHTML = `
+        <header class="page-header">
+          <div class="page-header-top">
+            <h1>Team Trial Leaderboard</h1>
+            <a href="/" class="nav-link">&larr; Build another</a>
+            <a href="https://github.com/sharonwoo/tachyon" class="tt-gh-link">
+              <svg width="14" height="14" viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+              Source on GitHub
+            </a>
+          </div>
+          <div id="summary" class="summary"></div>
+        </header>
+        <div id="build-warnings"></div>
+        <details class="team-overview-section" open>
+          <summary class="section-heading">Current team - score and where the points come from</summary>
+          <p class="tt-overview-key">Each row is a current team member, weakest average first. The <strong>bar</strong> is her <em>average</em> score split by where the points come from (decoded from <code>score_array</code>), on a shared points axis so segment length is absolute. <strong>Finishing position</strong> is finish place plus win margin; <strong>white</strong>, <strong>gold</strong> and <strong>unique skills</strong> are points per skill activation by rarity; <strong>strong start</strong> is the bonus for leaving the gate within 0.02s; <strong>style lead &amp; other</strong> is the same-style-lead bonuses plus small extras. Under each bar, the <strong>thin line</strong> is the middle half of her single-race scores (25th to 75th percentile), the <strong>short tick</strong> is her median, and the two <strong>dots</strong> are her worst and best single race. The dashed line is the team average. Hover for the split with each skill slice's proc rate; click a row to jump to her card.</p>
+          <div id="team-components"></div>
+        </details>
+        <details class="team-overview-section" open>
+          <summary class="section-heading">Score trend by day</summary>
+          <p class="tt-overview-key">Average team score per round, by day - a round is one full Team Trial run (a single replay, up to 5 races), scored as the sum of <code>team_total_score</code> across its races, then averaged across the day's rounds. The day is the replay's own capture timestamp when its filename has one (<code>TT-YYYYMMDD_HHMMSS_mmm</code>); otherwise it falls back to the file's save date - those points are amber and flagged, since a save date isn't reliably the capture date.</p>
+          <div id="score-trend"></div>
+        </details>
+        <details class="filter-section" open>
+          <summary class="section-heading">Filters</summary>
+          <div id="filters" class="filters"></div>
+        </details>
+        <details class="timeline-section" open>
+          <summary class="section-heading">Uma leaderboard</summary>
+          <div id="team-trial-count" class="timeline-count"></div>
+          <div id="team-trial-list"></div>
+        </details>`;
+      if (warnings.length) {
+        const box = document.createElement("div");
+        box.className = "tt-build-warnings";
+        const label = document.createElement("strong");
+        label.textContent = "Warnings:";
+        const list = document.createElement("ul");
+        for (const w of warnings) {
+          const li = document.createElement("li");
+          li.textContent = w;
+          list.append(li);
+        }
+        box.append(label, list);
+        document.getElementById("build-warnings").append(box);
+      }
+      window.scrollTo(0, 0);
+      const script = document.createElement("script");
+      script.src = "/team_trial.js";
+      document.body.append(script);
     }
 
     dropzone.addEventListener("click", () => fileInput.click());
@@ -99,31 +180,29 @@
     buildBtn.addEventListener("click", async () => {
       buildBtn.disabled = true;
       status.className = "tt-status";
-      status.textContent = `Building from ${selectedFiles.length} file(s)...`;
-
-      const formData = new FormData();
-      const meta = selectedFiles.map((f) => ({ name: f.name, lastModified: f.lastModified }));
-      for (const f of selectedFiles) formData.append("files", f, f.name);
-      formData.append("meta", JSON.stringify(meta));
-
       try {
-        const resp = await fetch("/build", { method: "POST", body: formData });
-        const html = await resp.text();
-        if (!resp.ok) {
-          status.className = "tt-status error";
-          status.textContent = "Build failed - see below.";
-          document.open();
-          document.write(html);
-          document.close();
-          return;
+        status.textContent = "Loading game data...";
+        const staticData = await loadStaticData();
+
+        const replays = [];
+        for (const [i, f] of selectedFiles.entries()) {
+          status.textContent = `Reading files... ${i + 1} / ${selectedFiles.length}`;
+          let parsed;
+          try {
+            parsed = JSON.parse(await f.text());
+          } catch {
+            return fail(`"${f.name}" isn't valid JSON.`);
+          }
+          replays.push({ name: f.name, lastModified: f.lastModified, data: parsed });
+          if (i % 8 === 7) await nextFrame();
         }
-        document.open();
-        document.write(html);
-        document.close();
+
+        const result = await buildTeamTrialData(replays, staticData, async (done, total) => {
+          status.textContent = `Decoding replays... ${done} / ${total}`;
+        });
+        showLeaderboard(result);
       } catch (err) {
-        status.className = "tt-status error";
-        status.textContent = "Request failed: " + err.message;
-        buildBtn.disabled = false;
+        fail(`Couldn't build the leaderboard: ${err.message}`);
       }
     });
   </script>

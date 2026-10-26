@@ -1472,3 +1472,13 @@ details[open] > summary.section-heading {
   color: var(--pink-hover);
   text-decoration: underline;
 }
+
+.tt-build-warnings {
+  background: #fff3cd;
+  border: 1px solid #ffe69c;
+  border-radius: 8px;
+  padding: .75rem 1rem;
+  margin: 1rem 0;
+  font-size: .9rem;
+  color: #3d3200;
+}

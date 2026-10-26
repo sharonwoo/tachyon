@@ -8,8 +8,8 @@
  * repeated here only where it affects the port itself. Despite the
  * "race_data.proto" origin, none of this is real protobuf wire decoding -
  * it's a fixed-layout binary format read via explicit byte offsets, so the
- * only encoding-specific pieces are gzip + base64, both native to the
- * Workers runtime (DecompressionStream, atob) - no protobuf library needed
+ * only encoding-specific pieces are gzip + base64, both native to browsers and
+ * Node (DecompressionStream, atob) - no protobuf library needed
  * here, mirroring the Python side (which only uses protobuf-generated
  * classes as typed containers, not for actual decoding).
  *

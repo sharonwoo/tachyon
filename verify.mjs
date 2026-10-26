@@ -3,12 +3,12 @@
 // files. Run: node verify.mjs
 import fs from "node:fs";
 import path from "node:path";
-import { buildTeamTrialData } from "./src/buildTeamTrial.js";
-import characterNames from "./src/data/character_names.json" with { type: "json" };
-import overrides from "./src/data/overrides.json" with { type: "json" };
-import skills from "./src/data/skills.json" with { type: "json" };
-import skillCatalog from "./src/data/skill_condition_catalog.json" with { type: "json" };
-import rawScoreTable from "./src/data/team_stadium_raw_score.json" with { type: "json" };
+import { buildTeamTrialData } from "./public/js/buildTeamTrial.js";
+import characterNames from "./public/data/character_names.json" with { type: "json" };
+import overrides from "./public/data/overrides.json" with { type: "json" };
+import skills from "./public/data/skills.json" with { type: "json" };
+import skillCatalog from "./public/data/skill_condition_catalog.json" with { type: "json" };
+import rawScoreTable from "./public/data/team_stadium_raw_score.json" with { type: "json" };
 
 const REPLAY_DIR = path.join(process.env.HOME, "code/uma-utils/team_stadium");
 const PYTHON_OUTPUT = path.join(process.env.HOME, "code/uma-utils/journal/team_trial_data_friend.js");

@@ -1,9 +1,11 @@
 # Project context
 
-A Cloudflare Worker: drop Uma Musume Team Stadium replay JSON files (from
-[umadump](https://github.com/Werseter/umadump)) onto a web page, get back a
-rendered Team Trial leaderboard. Stateless request/response - no storage,
-no accounts, nothing persisted server-side.
+A static site (Cloudflare Workers assets, no Worker script): drop Uma Musume
+Team Stadium replay JSON files (from
+[umadump](https://github.com/Werseter/umadump)) onto a web page and the
+leaderboard is built in the browser (`public/js/`). No uploads, storage or
+accounts. It was originally a Worker doing the build server-side; that hit
+the free plan's 10ms CPU limit on ~124 files, hence the move to the browser.
 
 **Live** at https://tachyon.satki.org. Public repo at
 github.com/sharonwoo/tachyon (MIT licensed).
@@ -32,25 +34,21 @@ gh run watch <run-id> --repo sharonwoo/tachyon --exit-status
 Always run `npx vitest run` and `node verify.mjs` locally before pushing -
 both are cheap and have caught real regressions during this project.
 
-## Current safety limits (src/index.js, src/raceScenario.js)
+## Safety notes (public/js/, public/index.html)
 
-- 300 files per upload, 1MB per file, 200MB total
-- `race_scenario` blobs capped at 128KB decompressed (aborts mid-stream, not
-  after buffering - see the comment in `raceScenario.js`)
-- All three were tightened down from much looser initial values after
-  actually measuring real replay data rather than guessing - re-measure
-  before loosening any of them back up.
-
-## Security history (worth knowing before touching src/index.js again)
-
-A confirmed, exploitable script-tag-breakout XSS was found and fixed here
-(JSON embedded raw into a `<script>` tag via `JSON.stringify` doesn't escape
-"/", so `</script>` in a replay's `trainer_name` broke out of the tag).
-Also fixed: a decompression-bomb vector (no cap existed originally) and a
-`__proto__`-keyed prototype pollution edge case in `buildTeamTrial.js`'s
-`charaInfo`. Any new code that embeds request-derived data into HTML or
-uses attacker-controlled strings as object keys should get the same
-scrutiny - see git log around "Security fixes" for the specifics.
+- `race_scenario` blobs are capped at 128KB decompressed (aborts mid-stream,
+  not after buffering - see the comment in `raceScenario.js`). Re-measure
+  before loosening it.
+- There are no file-count/size caps any more (the browser is the only
+  victim of a huge input).
+- The Worker-era XSS history: JSON embedded raw into a `<script>` tag broke
+  out via `</script>` in a replay's `trainer_name`. The browser version sets
+  `window.TEAM_TRIAL_DATA` directly instead of embedding HTML, and
+  `team_trial.js` escapes every string it renders - keep it that way.
+- `buildTeamTrial.js` still handles attacker-controlled JSON: `charaInfo`
+  is `Object.create(null)` and `own()` guards lookups by replay-supplied
+  keys (`__proto__` edge cases). New code that uses replay strings as
+  object keys needs the same care.
 
 ## Gotcha: node/npm/npx aren't on PATH by default
 
@@ -71,7 +69,7 @@ If `node -v` 404s with "command not found," run the two lines above first.
 - `verify.mjs` depends on files outside this repo (a sibling project's local
   replay data) - it's a personal verification tool, not run in CI, and will
   fail for anyone else who clones this.
-- `src/data/*.json` are static game-data snapshots (uma/skill names, a
+- `public/data/*.json` are static game-data snapshots (uma/skill names, a
   skill-condition catalog) copied in at a point in time - they go stale as
   the game adds new umas/skills and need to be manually refreshed from
   source.

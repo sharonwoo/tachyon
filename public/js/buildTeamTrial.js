@@ -1,4 +1,5 @@
 /**
+ * Runs in the browser (see index.html) - and in Node for verify.mjs/tests.
  * Build TEAM_TRIAL_DATA (the shape journal/team_trial.js expects) from
  * uploaded Team Stadium replay JSON, without needing archive.json.
  *
@@ -8,7 +9,7 @@
  * every replay's own race_horse_data_array already carries card_id + full
  * stats for its own team_id==1, self-contained per replay. card_id ->
  * display name still goes through character_names.json/overrides.json
- * (static game data, bundled in src/data/).
+ * (static game data, fetched from public/data/).
  *
  * train_rank/rank_score/scenario are always null here (that's training-run
  * metadata, not present anywhere in replay data) - everything else (races,
@@ -186,8 +187,9 @@ function raceStats(matches) {
  *   Parsed replay JSON plus the browser-reported file mtime (proxy for
  *   capture time, same caveat as the Python script's use of file mtime).
  * @param {{characterNames: object, overrides: object, skills: Array, skillCatalog: object, rawScoreTable: object}} staticData
+ * @param {(done: number, total: number) => void} [onProgress] called after each replay is processed
  */
-export async function buildTeamTrialData(replays, staticData) {
+export async function buildTeamTrialData(replays, staticData, onProgress) {
   const umaNames = { ...buildUmaNames(staticData.characterNames), ...(staticData.overrides.umas || {}) };
   const skillNames = {};
   for (const s of staticData.skillCatalog.skills || []) skillNames[s.skill_id] = s.name;
@@ -236,7 +238,10 @@ export async function buildTeamTrialData(replays, staticData) {
   const componentById = buildComponentTable(staticData.rawScoreTable);
   const skillRarity = new Map((staticData.skills || []).map((s) => [s.skill_id, s.rarity]));
 
+  let replaysDone = 0;
   for (const r of replays) {
+    if (replaysDone) onProgress?.(replaysDone, replays.length);
+    replaysDone++;
     const data = r.data;
     const matchKey = r.name;
     if (!Array.isArray(data.race_start_params_array) || !data.race_start_params_array.length) {
@@ -400,6 +405,8 @@ export async function buildTeamTrialData(replays, staticData) {
       }
     }
   }
+
+  onProgress?.(replays.length, replays.length);
 
   const currentTeam = new Map(); // tid -> { round, team, distance, distance_category, surface }
   if (latestReplay && !skippedReplays.has(latestReplay)) {

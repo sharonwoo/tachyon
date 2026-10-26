@@ -1,9 +1,10 @@
 # tachyon
 
-A Cloudflare Worker that turns a batch of Uma Musume Team Stadium replay
-JSON files (captured by [umadump](https://github.com/Werseter/umadump))
-into a Team Trial leaderboard page - drag files in, get a rendered page
-back. No storage, no accounts, nothing persisted server-side.
+A static site (served by Cloudflare Workers assets) that turns a batch of
+Uma Musume Team Stadium replay JSON files (captured by
+[umadump](https://github.com/Werseter/umadump)) into a Team Trial
+leaderboard page - drag files in, get a rendered page back. Everything runs
+in the browser: no uploads, no storage, no accounts, no server-side code.
 
 JS port of uma-utils' `scripts/build_team_trial_journal_external.py` and
 `scripts/_race_scenario.py` - see `verify.mjs` for how the port was checked
@@ -17,9 +18,8 @@ npx wrangler dev
 ```
 
 Open http://localhost:8787, drag a batch of replay `.json` files onto the
-dropzone (or click it to pick files), then **Build leaderboard**. Runs
-entirely locally via Miniflare - no Cloudflare account or network access
-needed.
+dropzone (or click it to pick files), then **Build leaderboard**. Serves
+the static files locally - no Cloudflare account or network access needed.
 
 ## Deploy
 
@@ -34,9 +34,10 @@ To deploy by hand instead: `npx wrangler deploy`.
 
 ## Structure
 
-- `src/raceScenario.js` - binary decoder for the `race_scenario` blob (per-round race simulation data)
-- `src/buildTeamTrial.js` - aggregates decoded replays into the leaderboard data shape
-- `src/index.js` - Worker entry point (`POST /build` handles the upload)
-- `public/` - static assets: the upload page, plus `team_trial.js`/`style.css` copied as-is from uma-utils' journal (plus a few GitHub-link styles)
-- `src/data/` - static game-data lookups (uma/skill names), bundled at build time
+- `public/js/raceScenario.js` - binary decoder for the `race_scenario` blob (per-round race simulation data)
+- `public/js/buildTeamTrial.js` - aggregates decoded replays into the leaderboard data shape
+- `public/index.html` - upload page; reads the files, runs the build in the browser, then swaps in the leaderboard
+- `public/team_trial.js` / `style.css` - copied as-is from uma-utils' journal (plus a few GitHub-link styles)
+- `public/data/` - static game-data lookups (uma/skill names, score-row table), fetched by the page
+- `test/` - vitest unit tests for the builder (`npx vitest run`)
 - `verify.mjs` - one-off script diffing this port's output against the Python build on real replay data (not run in CI - depends on local files outside this repo)
