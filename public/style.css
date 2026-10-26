@@ -131,7 +131,7 @@ body {
 }
 
 .tt-boxplot-row {
-  cursor: default;
+  cursor: pointer;
 }
 
 .tt-boxplot-hit {
@@ -223,6 +223,12 @@ body {
 
 .tt-overview-tooltip strong {
   color: var(--text);
+}
+
+.tt-assumed-note {
+  color: var(--status-review);
+  display: inline-block;
+  margin-top: 4px;
 }
 
 /* ---------- Heatmap ---------- */
@@ -320,6 +326,15 @@ body {
   border-radius: 6px;
   padding: 12px 14px;
   margin-bottom: 10px;
+}
+
+.run-card.tt-card-flash {
+  animation: tt-card-flash 1.6s ease-out;
+}
+
+@keyframes tt-card-flash {
+  0% { box-shadow: 0 0 0 2px var(--factor-scenario); }
+  100% { box-shadow: 0 0 0 2px transparent; }
 }
 
 .run-header {
@@ -663,33 +678,6 @@ body {
 
 .nav-link:hover {
   color: var(--text);
-}
-
-.tt-gh-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  color: var(--pink);
-  text-decoration: none;
-}
-
-.tt-gh-link:hover {
-  color: var(--pink-hover);
-}
-
-.tt-gh-link svg {
-  fill: currentColor;
-}
-
-.tt-inline-link {
-  color: var(--pink);
-  text-decoration: none;
-}
-
-.tt-inline-link:hover {
-  color: var(--pink-hover);
-  text-decoration: underline;
 }
 
 .tab-nav {
@@ -1061,4 +1049,426 @@ body {
 
 .cull-profile-list li {
   margin-bottom: 2px;
+}
+
+/* ---------- Team Trial Matchups (team_trial_matchups.html) ---------- */
+
+.ttm-section {
+  max-width: 960px;
+  margin: 0 auto 24px;
+}
+
+.ttm-squad-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.ttm-squad-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 16px 18px;
+  display: grid;
+  grid-template-columns: 210px 1fr;
+  gap: 20px;
+}
+
+@media (max-width: 700px) {
+  .ttm-squad-card {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ttm-squad-meta {
+  border-right: 1px solid var(--border);
+  padding-right: 20px;
+}
+
+@media (max-width: 700px) {
+  .ttm-squad-meta {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    padding-right: 0;
+    padding-bottom: 14px;
+    margin-bottom: 2px;
+  }
+}
+
+.ttm-squad-card-head {
+  margin-bottom: 2px;
+}
+
+.ttm-squad-card-head h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.ttm-squad-dist {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+.ttm-squad-members {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ttm-squad-member-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.ttm-squad-member-row .ttm-n {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.ttm-squad-history-note {
+  color: var(--text-muted);
+  font-size: 11px;
+  margin-bottom: 8px;
+}
+
+.ttm-matchup-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+@media (max-width: 560px) {
+  .ttm-matchup-cols {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}
+
+.ttm-matchup-col h4 {
+  margin: 0 0 6px;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.ttm-matchup-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 12px;
+  padding: 2px 0;
+}
+
+.ttm-matchup-row .ttm-opp-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ttm-matchup-row .ttm-mu-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.ttm-matchup-row .ttm-mu-right .ttm-n {
+  font-size: 11px;
+  min-width: 34px;
+  text-align: right;
+}
+
+.ttm-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+
+.ttm-pill-great { color: var(--status-keep);          background: color-mix(in srgb, var(--status-keep) 16%, transparent);          border-color: color-mix(in srgb, var(--status-keep) 40%, transparent); }
+.ttm-pill-good  { color: var(--status-likely_keep);   background: color-mix(in srgb, var(--status-likely_keep) 16%, transparent);   border-color: color-mix(in srgb, var(--status-likely_keep) 40%, transparent); }
+.ttm-pill-shaky { color: var(--status-review);        background: color-mix(in srgb, var(--status-review) 18%, transparent);        border-color: color-mix(in srgb, var(--status-review) 45%, transparent); }
+.ttm-pill-bad   { color: var(--status-safe_transfer); background: color-mix(in srgb, var(--status-safe_transfer) 18%, transparent); border-color: color-mix(in srgb, var(--status-safe_transfer) 45%, transparent); }
+
+.ttm-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 10px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.ttm-controls select {
+  background: var(--bg-card);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 3px 6px;
+  font-size: 12px;
+}
+
+.ttm-toggle {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.ttm-toggle button {
+  background: var(--bg-card);
+  color: var(--text-muted);
+  border: none;
+  padding: 3px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.ttm-toggle button.active {
+  background: var(--factor-scenario);
+  color: #0d1117;
+  font-weight: 600;
+}
+
+.ttm-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.ttm-table th {
+  position: sticky;
+  top: 0;
+  text-align: left;
+  color: var(--text-muted);
+  background: var(--bg-card);
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.ttm-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.ttm-table tr:last-child td {
+  border-bottom: none;
+}
+
+.ttm-table .ttm-wl {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.ttm-table-wrap {
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: 480px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.ttm-bar-track {
+  position: relative;
+  width: 90px;
+  height: 6px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.ttm-bar-fill {
+  position: absolute;
+  inset: 0;
+  border-radius: 3px;
+}
+
+/* ---------- Collapsible sections ---------- */
+
+details > summary.section-heading {
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+details > summary.section-heading::-webkit-details-marker {
+  display: none;
+}
+
+details > summary.section-heading::before {
+  content: "▾";
+  display: inline-block;
+  width: 1.2em;
+  color: var(--text-muted);
+}
+
+details:not([open]) > summary.section-heading::before {
+  content: "▸";
+}
+
+details[open] > summary.section-heading {
+  margin-bottom: 8px;
+}
+
+/* Team Trial per-uma score trend */
+
+.tt-trend-controls {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  margin-bottom: 8px;
+}
+
+.tt-trend-legend {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  color: var(--text-muted);
+  padding-bottom: 4px;
+}
+
+.tt-trend-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tt-trend-swatch {
+  display: inline-block;
+  width: 12px;
+  height: 3px;
+  border-radius: 2px;
+}
+
+.tt-uma-line.past polyline {
+  stroke-width: 1;
+  opacity: 0.5;
+}
+
+.tt-uma-hit {
+  cursor: pointer;
+}
+
+.has-focus .tt-uma-line {
+  opacity: 0.15;
+}
+
+.has-focus .tt-uma-line.focused {
+  opacity: 1;
+}
+
+.has-focus .tt-uma-line.focused polyline {
+  stroke-width: 3;
+  opacity: 1;
+}
+
+.badge-independent {
+  color: var(--text-muted);
+  border-color: var(--text-muted);
+  border-style: dashed;
+}
+
+.tt-breakdown {
+  margin: 0 0 10px;
+}
+
+.tt-breakdown > summary {
+  cursor: pointer;
+  color: var(--text-muted, #8b949e);
+  font-size: 0.85rem;
+  margin-bottom: 6px;
+}
+
+.tt-breakdown .tt-boxplot {
+  max-width: 640px;
+}
+
+.tt-breakdown-legend {
+  margin-bottom: 8px;
+}
+
+.tt-stack-total {
+  fill: var(--text);
+  font-size: 11px;
+}
+
+.tt-range-line {
+  stroke: var(--text-muted);
+  stroke-width: 1.5;
+}
+
+.tt-breakdown .tt-boxplot-row {
+  cursor: default;
+}
+
+.tt-legend-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 2px 10px;
+  border: 1px solid var(--border, #30363d);
+  border-radius: 12px;
+}
+
+.tt-legend-group-label {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+/* worst / best single race, drawn as dots on the spread line under each
+   stacked bar in the team chart */
+.tt-extreme-dot {
+  fill: var(--text-muted);
+  stroke: var(--bg-card);
+  stroke-width: 1.5;
+}
+
+.tt-gh-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--pink);
+  text-decoration: none;
+}
+
+.tt-gh-link:hover {
+  color: var(--pink-hover);
+}
+
+.tt-gh-link svg {
+  fill: currentColor;
+}
+
+.tt-inline-link {
+  color: var(--pink);
+  text-decoration: none;
+}
+
+.tt-inline-link:hover {
+  color: var(--pink-hover);
+  text-decoration: underline;
 }

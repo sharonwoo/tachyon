@@ -217,7 +217,8 @@ export function distanceCategory(meters) {
  *   { activations: [[frameTime, skillId, effect], ...],  // white skills
  *     greenActivations: [skillId, ...],                  // green/aptitude skills
  *     defeat: DefeatType int,
- *     lastSpurtStartDistance: number }  // meters; -1 if never spurted
+ *     lastSpurtStartDistance: number,  // meters; -1 if never spurted
+ *     startDelayTime: number }         // seconds out of the gate (<= 0.02 pays the strong-start bonus)
  * plus a "_distance_m" key with the race's actual course distance.
  *
  * lastSpurtStartDistance is -1 exactly when defeat === 7 (LastSpurtFalse) -
@@ -237,6 +238,7 @@ export async function horseActivity(raceScenarioB64) {
       greenActivations: [],
       defeat: scenario.horseResult[i].defeat,
       lastSpurtStartDistance: scenario.horseResult[i].lastSpurtStartDistance,
+      startDelayTime: scenario.horseResult[i].startDelayTime,
     };
   }
   for (const e of scenario.event) {

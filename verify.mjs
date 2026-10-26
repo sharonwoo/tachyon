@@ -8,6 +8,7 @@ import characterNames from "./src/data/character_names.json" with { type: "json"
 import overrides from "./src/data/overrides.json" with { type: "json" };
 import skills from "./src/data/skills.json" with { type: "json" };
 import skillCatalog from "./src/data/skill_condition_catalog.json" with { type: "json" };
+import rawScoreTable from "./src/data/team_stadium_raw_score.json" with { type: "json" };
 
 const REPLAY_DIR = path.join(process.env.HOME, "code/uma-utils/team_stadium");
 const PYTHON_OUTPUT = path.join(process.env.HOME, "code/uma-utils/journal/team_trial_data_friend.js");
@@ -23,7 +24,7 @@ const replays = files.map((f) => {
   };
 });
 
-const jsResult = await buildTeamTrialData(replays, { characterNames, overrides, skills, skillCatalog });
+const jsResult = await buildTeamTrialData(replays, { characterNames, overrides, skills, skillCatalog, rawScoreTable });
 
 const pyRaw = fs.readFileSync(PYTHON_OUTPUT, "utf-8");
 const pyResult = JSON.parse(pyRaw.slice("const TEAM_TRIAL_DATA = ".length).trimEnd().replace(/;$/, ""));
@@ -36,6 +37,10 @@ const pyResult = JSON.parse(pyRaw.slice("const TEAM_TRIAL_DATA = ".length).trimE
 // difference, not a correctness bug, so it's excluded from this diff -
 // everything else (scores, races, skills, distances, names) must match
 // exactly.
+// NOTE: the external Python builder predates the score-component / start /
+// surface fields added in the 2026-10 port, so those (and per-match
+// date_source/surface/team/running_style) will show up as diffs here; they
+// were checked against build_team_trial_journal.py's journal output instead.
 function stripKeys(obj, keys) {
   if (Array.isArray(obj)) return obj.map((v) => stripKeys(v, keys));
   if (obj && typeof obj === "object") {

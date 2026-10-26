@@ -37,6 +37,6 @@ To deploy by hand instead: `npx wrangler deploy`.
 - `src/raceScenario.js` - binary decoder for the `race_scenario` blob (per-round race simulation data)
 - `src/buildTeamTrial.js` - aggregates decoded replays into the leaderboard data shape
 - `src/index.js` - Worker entry point (`POST /build` handles the upload)
-- `public/` - static assets: the upload page, plus `team_trial.js`/`style.css` reused as-is from uma-utils' journal
+- `public/` - static assets: the upload page, plus `team_trial.js`/`style.css` copied as-is from uma-utils' journal (plus a few GitHub-link styles)
 - `src/data/` - static game-data lookups (uma/skill names), bundled at build time
 - `verify.mjs` - one-off script diffing this port's output against the Python build on real replay data (not run in CI - depends on local files outside this repo)

@@ -18,6 +18,98 @@ import { horseActivity, distanceCategory, DEFEAT_TYPE_NAMES } from "./raceScenar
 
 const MY_TEAM_ID = 1;
 
+// Ported from scripts/_tt_common.py / _tt_scoring.py - see those for the
+// derivations behind each constant below.
+
+// umadump names each replay "TT-YYYYMMDD_HHMMSS_mmm" at capture time; that
+// date is the real capture date. Anything else falls back to the browser's
+// file mtime, flagged "assumed" since a copy/sync rewrites mtime.
+const TT_FILENAME_RE = /^TT-(\d{8})_\d{6}_\d{3}$/;
+
+const RUNNING_STYLE_NAMES = { 1: "Front", 2: "Pace", 3: "Late", 4: "End" };
+
+// race_result's distance_type identifies the Team Trials team: 1-4 are the
+// turf Sprint/Mile/Medium/Long teams, 5 is the dirt team.
+const TEAM_NAMES = { 1: "Sprint", 2: "Mile", 3: "Medium", 4: "Long", 5: "Dirt" };
+const DIRT_DISTANCE_TYPE = 5;
+
+// Start delay (s) at or under which a start can earn the strong-start bonus.
+const STRONG_START_DELAY = 0.02;
+
+const SCORE_GROUP_LABELS = {
+  position: "Finishing position",
+  white_skills: "White skills",
+  gold_skills: "Gold skills",
+  unique_skills: "Unique skills",
+  strong_start: "Strong start",
+  bonuses: "Style lead & other",
+};
+
+const SCORE_GROUPS = {
+  position: ["finish_place", "win_margin"],
+  white_skills: ["white_skills"],
+  gold_skills: ["gold_skills"],
+  unique_skills: ["unique_skills", "evolved_skills"],
+  strong_start: ["strong_start"],
+  bonuses: ["style_lead_mid", "style_lead_late", "upset", "finish_time", "penalty", "team"],
+};
+
+const SKILL_KIND_BY_RARITY = { 1: "white", 2: "gold", 3: "unique", 4: "unique", 5: "unique" };
+
+function scoreComponent(conditionType, cond1) {
+  if (conditionType === 1) return "win_margin";
+  if (conditionType === 2) return "upset";
+  if (conditionType === 3) return "finish_place";
+  if (conditionType === 4) return "finish_time";
+  if (conditionType === 5 || conditionType === 6) return "penalty";
+  if (conditionType === 7) return "strong_start";
+  if (conditionType === 8) {
+    if (cond1 === 1) return "white_skills";
+    return cond1 === 2 ? "gold_skills" : "unique_skills";
+  }
+  if (conditionType === 9) return cond1 === 1 ? "style_lead_mid" : "style_lead_late";
+  if (conditionType === 10) return "evolved_skills";
+  return "team";
+}
+
+/** raw_score_id -> component name, from team_stadium_raw_score.json
+ *  (id -> [condition_type, condition_value_1, condition_value_2]). */
+function buildComponentTable(rawScoreTable) {
+  return new Map(Object.entries(rawScoreTable).map(([id, [t, c1]]) => [Number(id), scoreComponent(t, c1)]));
+}
+
+// raw_score_id / distance_type / running_style come straight from uploaded
+// (attacker-controlled) replay JSON - look them up only as own properties so
+// a key like "__proto__" can't resolve to Object.prototype.
+const own = (table, key) => (Object.hasOwn(table, key) ? table[key] : null);
+
+/** {component: points} for one uma's score_array. */
+function scoreComponents(scoreArray, componentById) {
+  const out = {};
+  for (const row of scoreArray) {
+    const name = componentById.get(row.raw_score_id) ?? "team";
+    out[name] = (out[name] || 0) + row.score;
+  }
+  return out;
+}
+
+/** {group: points} - every group present, 0 when she earned nothing in it. */
+function groupComponents(components) {
+  const out = {};
+  for (const [g, cs] of Object.entries(SCORE_GROUPS)) {
+    out[g] = cs.reduce((a, c) => a + (components[c] || 0), 0);
+  }
+  return out;
+}
+
+function resolveMatchDate(name, lastModified) {
+  const m = TT_FILENAME_RE.exec(name.replace(/\.json$/i, ""));
+  if (m) return [`${m[1].slice(0, 4)}-${m[1].slice(4, 6)}-${m[1].slice(6, 8)}`, "capture"];
+  return [new Date(lastModified).toISOString().slice(0, 10), "assumed"];
+}
+
+const round1 = (n) => Math.round(n * 10) / 10;
+
 function buildUmaNames(characterNames) {
   const names = {};
   for (const [baseId, info] of Object.entries(characterNames)) {
@@ -93,7 +185,7 @@ function raceStats(matches) {
  * @param {Array<{name: string, lastModified: number, data: object}>} replays
  *   Parsed replay JSON plus the browser-reported file mtime (proxy for
  *   capture time, same caveat as the Python script's use of file mtime).
- * @param {{characterNames: object, overrides: object, skills: Array, skillCatalog: object}} staticData
+ * @param {{characterNames: object, overrides: object, skills: Array, skillCatalog: object, rawScoreTable: object}} staticData
  */
 export async function buildTeamTrialData(replays, staticData) {
   const umaNames = { ...buildUmaNames(staticData.characterNames), ...(staticData.overrides.umas || {}) };
@@ -125,16 +217,24 @@ export async function buildTeamTrialData(replays, staticData) {
   const perUmaSkills = new Map();
   // tid -> DefeatType -> count
   const perUmaDefeats = new Map();
-  const roundDistanceByMatch = new Map(); // `${matchKey} ${round}` -> [distance, distanceCategory]
+  const perUmaStarts = new Map(); // tid -> { races, fast, bonus }
+  const perUmaGroups = new Map(); // tid -> group -> per-race points
+  const roundDistanceByMatch = new Map(); // `${matchKey} ${round}` -> [distance, distanceCategory, surface, team]
 
-  let latestMtime = null;
+  // "Latest" replay = newest TT-YYYYMMDD_HHMMSS_mmm timestamp in the name,
+  // falling back to mtime among older hash-named replays (which sort before
+  // any timestamped one).
+  const captureOrder = (r) => [TT_FILENAME_RE.test(r.name.replace(/\.json$/i, "")) ? r.name : "", r.lastModified];
   let latestReplay = null;
   for (const r of replays) {
-    if (latestMtime === null || r.lastModified > latestMtime) {
-      latestMtime = r.lastModified;
-      latestReplay = r;
-    }
+    if (latestReplay === null) { latestReplay = r; continue; }
+    const [ka, ma] = captureOrder(r);
+    const [kb, mb] = captureOrder(latestReplay);
+    if (ka > kb || (ka === kb && ma > mb)) latestReplay = r;
   }
+  const skippedReplays = new Set();
+  const componentById = buildComponentTable(staticData.rawScoreTable);
+  const skillRarity = new Map((staticData.skills || []).map((s) => [s.skill_id, s.rarity]));
 
   for (const r of replays) {
     const data = r.data;
@@ -158,6 +258,7 @@ export async function buildTeamTrialData(replays, staticData) {
     );
     if (myIds.size !== 1) {
       unmatchedTeam.push(matchKey);
+      skippedReplays.add(r);
       continue;
     }
 
@@ -166,13 +267,23 @@ export async function buildTeamTrialData(replays, staticData) {
         if (h.team_id === MY_TEAM_ID) {
           charaInfo[h.trained_chara_id] = {
             cardId: String(h.card_id),
+            skillIds: (h.skill_array || []).map((s) => s.skill_id),
             totalStats: h.speed + h.stamina + h.pow + h.guts + h.wiz,
           };
         }
       }
     }
 
-    const matchDate = new Date(r.lastModified).toISOString().slice(0, 10);
+    const [matchDate, matchDateSource] = resolveMatchDate(r.name, r.lastModified);
+
+    const stylesByRound = new Map();
+    for (const rsp of data.race_start_params_array) {
+      const styles = new Map();
+      for (const h of rsp.race_horse_data_array) {
+        if (h.team_id === MY_TEAM_ID) styles.set(h.trained_chara_id, h.running_style);
+      }
+      stylesByRound.set(rsp.round, styles);
+    }
     matchCount++;
 
     for (const roundResult of data.race_result_array) {
@@ -189,7 +300,13 @@ export async function buildTeamTrialData(replays, staticData) {
         scenarioDecodeFailures++;
       }
 
-      roundDistanceByMatch.set(`${matchKey} ${roundResult.round}`, [raceDistance, raceDistanceCat]);
+      // The dirt slot is its own team whatever its length, so it gets its own
+      // category ("Dirt") rather than being lumped into "Mile".
+      const surface = roundResult.distance_type === DIRT_DISTANCE_TYPE ? "Dirt" : "Turf";
+      const team = own(TEAM_NAMES, roundResult.distance_type);
+      if (surface === "Dirt") raceDistanceCat = "Dirt";
+
+      roundDistanceByMatch.set(`${matchKey} ${roundResult.round}`, [raceDistance, raceDistanceCat, surface, team]);
 
       for (const cr of roundResult.chara_result_array) {
         if (cr.team_id !== MY_TEAM_ID) continue;
@@ -200,6 +317,7 @@ export async function buildTeamTrialData(replays, staticData) {
 
         const tid = cr.trained_chara_id;
         const score = cr.score_array.reduce((a, s) => a + s.score, 0);
+        const components = scoreComponents(cr.score_array, componentById);
 
         const raceId = `${matchKey} ${roundResult.round}`;
         const horseIdx = cr.frame_order - 1;
@@ -236,7 +354,18 @@ export async function buildTeamTrialData(replays, staticData) {
           // derive from lastSpurtStartDistance and defeat.
           spurted = horse.lastSpurtStartDistance !== -1;
           fullSpurt = spurted && horse.defeat !== 8; // LastSpurtTargetSpeedDec
+
+          if (!perUmaStarts.has(tid)) perUmaStarts.set(tid, { races: 0, fast: 0, bonus: 0 });
+          const st = perUmaStarts.get(tid);
+          st.races++;
+          if (horse.startDelayTime <= STRONG_START_DELAY) st.fast++;
+          if ((components.strong_start || 0) > 0) st.bonus++;
         }
+        if (!perUmaGroups.has(tid)) {
+          perUmaGroups.set(tid, Object.fromEntries(Object.keys(SCORE_GROUPS).map((g) => [g, []])));
+        }
+        const groups = perUmaGroups.get(tid);
+        for (const [g, points] of Object.entries(groupComponents(components))) groups[g].push(points);
 
         const info = charaInfo[tid];
         const cardId = info ? info.cardId : null;
@@ -253,12 +382,16 @@ export async function buildTeamTrialData(replays, staticData) {
         entry.matches.push({
           match_key: matchKey,
           date: matchDate,
+          date_source: matchDateSource,
           opponent,
           round: roundResult.round,
           distance: raceDistance,
           distance_category: raceDistanceCat,
+          surface,
+          running_style: own(RUNNING_STYLE_NAMES, stylesByRound.get(roundResult.round)?.get(tid)),
           finish_order: cr.finish_order,
           score,
+          team,
           win: won,
           team_total_score: roundResult.team_total_score,
           spurted,
@@ -268,13 +401,14 @@ export async function buildTeamTrialData(replays, staticData) {
     }
   }
 
-  const currentTeam = new Map(); // tid -> { round, distance, distance_category }
-  if (latestReplay) {
+  const currentTeam = new Map(); // tid -> { round, team, distance, distance_category, surface }
+  if (latestReplay && !skippedReplays.has(latestReplay)) {
     for (const rsp of latestReplay.data.race_start_params_array) {
-      const [distance, distanceCat] = roundDistanceByMatch.get(`${latestReplay.name} ${rsp.round}`) || [null, null];
+      const [distance, distanceCat, surface, team] =
+        roundDistanceByMatch.get(`${latestReplay.name} ${rsp.round}`) || [null, null, null, null];
       for (const h of rsp.race_horse_data_array) {
         if (h.team_id === MY_TEAM_ID) {
-          currentTeam.set(h.trained_chara_id, { round: rsp.round, distance, distance_category: distanceCat });
+          currentTeam.set(h.trained_chara_id, { round: rsp.round, team, distance, distance_category: distanceCat, surface });
         }
       }
     }
@@ -289,7 +423,7 @@ export async function buildTeamTrialData(replays, staticData) {
     const overall = raceStats(matches);
 
     const distanceStats = {};
-    for (const cat of ["Sprint", "Mile", "Medium", "Long"]) {
+    for (const cat of ["Sprint", "Mile", "Medium", "Long", "Dirt"]) {
       const catMatches = matches.filter((m) => m.distance_category === cat);
       if (catMatches.length) distanceStats[cat] = raceStats(catMatches);
     }
@@ -316,6 +450,48 @@ export async function buildTeamTrialData(replays, staticData) {
     }
     const staminaCollapses = defeatCounts.get(6) || 0; // DefeatType.Stamina
 
+    const starts = perUmaStarts.get(tid) || { races: 0, fast: 0, bonus: 0 };
+
+    // Per-race distribution of each score group, across all of her races.
+    // Means sum to avg_score. Groups she never earned anything in are left out.
+    const scoreComponentStats = {};
+    for (const [group, rawValues] of Object.entries(perUmaGroups.get(tid) || {})) {
+      if (!rawValues.some((v) => v)) continue;
+      const values = [...rawValues].sort((a, b) => a - b);
+      scoreComponentStats[group] = {
+        mean: round1(values.reduce((a, b) => a + b, 0) / values.length),
+        min: values[0],
+        p25: round1(percentile(values, 25)),
+        median: round1(percentile(values, 50)),
+        p75: round1(percentile(values, 75)),
+        max: values[values.length - 1],
+      };
+    }
+
+    // Per-rarity "proc rate": of the white/gold/unique skills she carries
+    // (skill_array from her own replay entry), the average share of races
+    // each fired in. Green (aptitude) skills don't score and are left out.
+    const skillProc = (() => {
+      const info = charaInfo[tid];
+      if (!info || !overall.races) return null;
+      const fired = perUmaSkills.get(tid) || new Map();
+      const rates = { white: [], gold: [], unique: [] };
+      for (const skillId of info.skillIds) {
+        const stat = fired.get(skillId);
+        if (stat && stat.isGreen) continue;
+        const kind = SKILL_KIND_BY_RARITY[skillRarity.get(skillId)];
+        if (!kind) continue;
+        rates[kind].push(stat ? stat.racesFired.size / overall.races : 0);
+      }
+      const out = {};
+      for (const [k, v] of Object.entries(rates)) {
+        if (v.length) out[k] = { carried: v.length, rate: Math.round((v.reduce((a, b) => a + b, 0) / v.length) * 10000) / 10000 };
+      }
+      const every = Object.values(rates).flat();
+      if (every.length) out.all = { carried: every.length, rate: Math.round((every.reduce((a, b) => a + b, 0) / every.length) * 10000) / 10000 };
+      return out;
+    })();
+
     const teamInfo = currentTeam.get(tid) || {};
 
     umas.push({
@@ -329,11 +505,16 @@ export async function buildTeamTrialData(replays, staticData) {
       distance_stats: distanceStats,
       in_current_team: currentTeam.has(tid),
       current_team_round: teamInfo.round ?? null,
+      current_team_team: teamInfo.team ?? null,
       current_team_distance: teamInfo.distance ?? null,
       current_team_distance_category: teamInfo.distance_category ?? null,
+      current_team_surface: teamInfo.surface ?? null,
       skills,
       stamina_collapses: staminaCollapses,
       defeat_breakdown: defeatBreakdown,
+      start_stats: starts,
+      score_components: scoreComponentStats,
+      skill_proc: skillProc,
       switches_distance: Object.keys(distanceStats).length > 1,
       matches,
     });
@@ -354,13 +535,18 @@ export async function buildTeamTrialData(replays, staticData) {
 
   return {
     generated_at: new Date().toISOString().replace(/\.\d+Z$/, "Z"),
+    score_component_labels: SCORE_GROUP_LABELS,
+    strong_start_baseline: [...perUmaStarts.values()].reduce(
+      (acc, v) => ({ races: acc.races + v.races, fast: acc.fast + v.fast, bonus: acc.bonus + v.bonus }),
+      { races: 0, fast: 0, bonus: 0 }
+    ),
     match_count: matchCount,
     race_count: raceCount,
     win_count: winCount,
     top1_count: top1Count,
     top3_count: top3Count,
     current_team_match_key: latestReplay ? latestReplay.name : null,
-    current_team_date: latestMtime !== null ? new Date(latestMtime).toISOString().slice(0, 10) : null,
+    current_team_date: latestReplay ? resolveMatchDate(latestReplay.name, latestReplay.lastModified)[0] : null,
     current_team_size: currentTeam.size,
     umas,
     warnings,

@@ -3,8 +3,9 @@ import characterNames from "./data/character_names.json";
 import overrides from "./data/overrides.json";
 import skills from "./data/skills.json";
 import skillCatalog from "./data/skill_condition_catalog.json";
+import rawScoreTable from "./data/team_stadium_raw_score.json";
 
-const STATIC_DATA = { characterNames, overrides, skills, skillCatalog };
+const STATIC_DATA = { characterNames, overrides, skills, skillCatalog, rawScoreTable };
 
 const MAX_FILES = 300; // generous headroom over the ~100-file expected case
 const MAX_TOTAL_BYTES = 200 * 1024 * 1024; // 200MB total
@@ -97,17 +98,25 @@ async function handleBuild(request) {
     <div id="summary" class="summary"></div>
   </header>
   ${warningsHtml}
-  <section class="team-overview-section">
-    <h2 class="section-heading">Current team - score distribution</h2>
-    <div id="team-overview"></div>
-  </section>
-  <section class="filter-section">
+  <details class="team-overview-section" open>
+    <summary class="section-heading">Current team - score and where the points come from</summary>
+    <p class="tt-overview-key">Each row is a current team member, weakest average first. The <strong>bar</strong> is her <em>average</em> score split by where the points come from (decoded from <code>score_array</code>), on a shared points axis so segment length is absolute. <strong>Finishing position</strong> is finish place plus win margin; <strong>white</strong>, <strong>gold</strong> and <strong>unique skills</strong> are points per skill activation by rarity; <strong>strong start</strong> is the bonus for leaving the gate within 0.02s; <strong>style lead &amp; other</strong> is the same-style-lead bonuses plus small extras. Under each bar, the <strong>thin line</strong> is the middle half of her single-race scores (25th to 75th percentile), the <strong>short tick</strong> is her median, and the two <strong>dots</strong> are her worst and best single race. The dashed line is the team average. Hover for the split with each skill slice's proc rate; click a row to jump to her card.</p>
+    <div id="team-components"></div>
+  </details>
+  <details class="team-overview-section" open>
+    <summary class="section-heading">Score trend by day</summary>
+    <p class="tt-overview-key">Average team score per round, by day - a round is one full Team Trial run (a single replay, up to 5 races), scored as the sum of <code>team_total_score</code> across its races, then averaged across the day's rounds. The day is the replay's own capture timestamp when its filename has one (<code>TT-YYYYMMDD_HHMMSS_mmm</code>); otherwise it falls back to the file's save date - those points are amber and flagged, since a save date isn't reliably the capture date.</p>
+    <div id="score-trend"></div>
+  </details>
+  <details class="filter-section" open>
+    <summary class="section-heading">Filters</summary>
     <div id="filters" class="filters"></div>
-  </section>
-  <section class="timeline-section">
+  </details>
+  <details class="timeline-section" open>
+    <summary class="section-heading">Uma leaderboard</summary>
     <div id="team-trial-count" class="timeline-count"></div>
     <div id="team-trial-list"></div>
-  </section>
+  </details>
   <!-- JSON.stringify doesn't escape "/", so a replay whose trainer_name
        contains a literal "</script>" would otherwise close this tag early
        and inject arbitrary markup - escaping "<" to \u003c keeps it a valid
